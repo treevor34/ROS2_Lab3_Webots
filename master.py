@@ -34,6 +34,7 @@ class FindPoles(Node):
         self.cmd = Twist() #forgot
         self.prev = 180 #previous angle, used to find XY
         self.direct = 180 #current direction aiming
+        self.switcher = 0
         
         self.f = 0.0 #distance sensors
         self.r = 0.0
@@ -48,7 +49,11 @@ class FindPoles(Node):
 
         #???self.rotCount = 0
         self.x = 15.0 #X and Y
-        self.y = -15.5
+        self.y = -15.0
+
+        self.r1 = 0.0 #blue
+        self.r2 = 0.0 #green
+        self.r3 = 0.0 #yellow
         
         self.zone = [".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", "."]
     
@@ -128,7 +133,6 @@ class FindPoles(Node):
                     self.direct = 0
                     self.nsew = "s"
         self.get_logger().info("New Direction:------------------")
-        #self.get_logger().info("New Direction:------------------")
         self.get_logger().info(str(self.direct))
         
     def findXY(self):
@@ -156,15 +160,37 @@ class FindPoles(Node):
             self.y = self.y - pyY
         self.pastD = distance        
     
-    #def cameraCalc(self):
+    def cameraCalc(self):
+        x1 = -20
+        y1 = -20
+        x2 = -20
+        y2 = 20
+        x3 = 20
+        y3 = 20
+        a = (-2 * x1) + (2 * x2)
+        b = (-2 * y1) + (2 * y2)
+        c = ((self.r1 * self.r1) - (self.r2 * self.r2) - (x1 * x1) + (x2 * x2) - (y1 * y1) + (y2 * y2))
+        d = (-2 * x2) + (2 * x3)
+        e = (-2 * y2) + (2 * x3)
+        f = ((self.r2 * self.r2) - (self.r3 * self.r3) - (x2 * x2) + (x3 * x3) - (y2 * y2) + (y3 * y3))
+        self.x = (((c*e) - (f*b)) / ((e*a) - (b*d)))
+        self.y = (((c*d) - (a*f)) / ((b*d) - (a*e)))
 
     def actualProcess(self):
         front = self.f*39.37
         left = self.l*39.37
         right = self.r*39.37
-        v = self.speed
+        if((self.switcher % 2) == 0):
+            #self.get_logger().info("Swap")
+            v_rot = -.3
+            v_rot_slow = -.05
+        elif((self.switcher % 2) != 0):
+            #self.get_logger().info("Swap")
+            v_rot = .3
+            v_rot_slow = .05
+        
         distance = (((self.lps+self.rps)/2) * .80686)# - .5
-        #self.x += v*cos(self.prev)
+
         if(self.nsew == "w" or self.nsew == "e"):
             stopper = self.x
         else:
@@ -173,78 +199,86 @@ class FindPoles(Node):
 
         if(self.finder == True):
             self.findLoc()
+            self.get_logger().info("Finder: Zone = ")
+            self.get_logger().info(str(self.curZone))
             self.finder = False
             if(self.curZone == 3):
                 self.direct = 0
                 self.nsew = "s"
+                self.done = False
             elif(self.curZone == 15):
                 self.direct = 270
                 self.nsew = "w"
+                self.done = False
             elif(self.curZone == 14):
                 self.direct = 180
                 self.nsew = "n"
+                self.done = False
             elif(self.curZone == 2):
                 self.direct = 270
                 self.nsew = "w"
+                self.done = False
 
         #self.get_logger().info(str(self.x))
         #self.get_logger().info(str(self.y))
+        #self.get_logger().info(str(self.done))
+        #self.get_logger().info(str(self.switcher))
+        #self.get_logger().info(str(self.tmpDist))
         self.cmd.linear.x = self.speed
         self.cmd.angular.z = 0.0
-        if(abs((stopper % 10) - 5) < .27): 
+        #if(abs((stopper % 10) - 5) < .27 and self.done == False): 
+        if(abs(distance % 10) < .27 and self.done == False): 
             self.cmd.linear.x = 0.0
-            self.cmd.angular.z = 0.3
+            self.cmd.angular.z = v_rot
             self.get_logger().info(str(self.deg))
             if((self.deg > abs(self.direct-420) and self.deg < abs(self.direct-451))):
-                if(self.rot == True):
-                    #self.get_logger().info("setting rot false")
-                    self.rot = False
+                self.rot = False
+                self.get_logger().info("Reset Rot false")
             #resets boolean about when to rotate
             elif(self.deg > abs(self.direct+20) and self.deg < abs(self.direct+43)):
-                if(self.rot == True):
-                    #self.get_logger().info("setting rot false")
-                    self.rot = False
-            #stops spinning at desired rotation
+                self.get_logger().info("Reset Rot false")
+                self.rot = False
+            #stops spinning after 1 desired rotation
             elif(self.deg > self.direct-.34 and self.deg < self.direct+.34 and self.rot == False):
-                #self.get_logger().info("Stop spinning")
+                self.get_logger().info("STOPPP IF")
                 self.done = True
                 self.finder = True
                 self.cmd.linear.x = self.speed
                 self.cmd.angular.z = 0.0
+                self.switcher += 1
+                #cameraCalc(self):
             #spins slower when close to desired direction
             elif(self.direct == 0 and self.rot == False):
                 if(self.deg > 356.5 or self.deg < 3.4):
-                    #self.get_logger().info("Spin Slower")
+                    self.get_logger().info("Spins slow 0")
                     self.cmd.linear.x = 0.0
-                    self.cmd.angular.z = 0.05
+                    self.cmd.angular.z = v_rot_slow
+            #same as previous
             elif(self.deg > self.direct-1.75 and self.deg < self.direct+1.75 and self.rot == False):
-                #self.get_logger().info("Spin Slower")
+                self.get_logger().info("Spins slower")
                 self.cmd.linear.x = 0.0
-                self.cmd.angular.z = 0.05
+                self.cmd.angular.z = v_rot_slow
+            #This is to change direction
             if(self.rot == False and front < 10 and self.done == True):
-                #self.get_logger().info("Setting up to change direction: Rot now True")
-                #self.get_logger().info("Current front: ")
-                #self.get_logger().info(str(front))
                 self.cmd.linear.x = 0.0
-                self.cmd.angular.z = 0.3
+                self.cmd.angular.z = v_rot
                 self.rot = True
                 self.done = False
                 self.changeDir()
-        elif(distance % 10 > 2):
+                self.get_logger().info("Change Direction IF")
+        #resets "done" boolean after driving a bit
+        elif((stopper % 10) < .27): #need to change this soon
             self.rot = True
             self.done = False
-            #self.get_logger().info("Reset Rotation: to True")
+            self.get_logger().info("Reset done")
+            
 
         
         #self.get_logger().info(str(self.cmd.linear.x))
         #self.get_logger().info(str(self.cmd.angular.z))
         self.prev = self.deg
-        #self.get_logger().info(str(front)) #------------------------------------------------------------------------------------------
         self.pubs_cmdvel.publish(self.cmd)
 
-    
-    #def odom_cb(self, msg: Odometry):
-    #    q = msg.pose.pose.orientation
     def odom_cb(self, msg):
         self.yaw = msg.data
         self.deg = self.yaw * (180/pi)

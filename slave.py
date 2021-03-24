@@ -28,9 +28,9 @@ class ServiceNodeVelocity(WebotsNode):
         self.left_motor.setPosition(float('inf'))
         self.left_motor.setVelocity(0)
 
-        #self.cam = self.robot.getDevice('camera1')
-        #self.cam.enable(self.service_node_vel_timestep)
-        #self.cam_pub = self.create_publisher()
+        self.cam = self.robot.getDevice('camera1')
+        self.cam.enable(self.timestep)
+        self.cam_pub = self.create_publisher(Range, 'camera', 1)
 
         self.right_pos_sensor = self.robot.getDevice('right wheel sensor')
         self.left_pos_sensor = self.robot.getDevice('left wheel sensor')
@@ -67,8 +67,38 @@ class ServiceNodeVelocity(WebotsNode):
         self.vth = 0.0
         self.time_step = 0.032
         self.odom_timer = self.create_timer(self.time_step, self.odom_callback)
+        self.cam_timer = self.create_timer(self.time_step, self.cam_callback)
         self.wheel_gap = 2.28  # in meter
         self.wheel_radius = 0.8  # in meter
+        self.r1 = 0.0
+        self.r2 = 0.0
+        self.r3 = 0.0
+    
+    def cam_callback(self):
+        msg_cam = Range()
+        self.cam.recognitionEnable(self.timestep)
+        recog = self.cam.getRecognitionObjects()
+        f = self.front_dist_sensor.getValue()*39.37
+        if(len(recog) != 0):
+            if abs(recog[0].get_position()[0]) < .02:
+                #green
+                if(recog[0].get_colors()[0] == 0 and recog[0].get_colors()[1] == 1 and recog[0].get_colors()[2] == 0):
+                    self.r2 = f + 3.14
+                    #c2 +=1
+                #blue
+                elif(recog[0].get_colors()[0] == 0 and recog[0].get_colors()[1] == 0 and recog[0].get_colors()[2] == 1):
+                    self.r1 = f + 3.14
+                    #c1 +=1
+                #yelow
+                elif(recog[0].get_colors()[0] == 1 and recog[0].get_colors()[1] == 1 and recog[0].get_colors()[2] == 0):
+                    self.r3 = f + 3.14
+                    #c3 +=1
+
+        msg_cam.range = self.r1
+        msg_cam.min_range = self.r2
+        msg_cam.max_range = self.r3
+        
+        self.cam_pub.publish(msg_cam)
     
     def odom_callback(self):
         self.publish_odom()

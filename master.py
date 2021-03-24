@@ -21,6 +21,7 @@ class FindPoles(Node):
         self.subs_right_ps = self.create_subscription(Float64, 'right_PS', self.rightps_cb, 1)
         #self.create_subscription(Odometry, 'odom', self.odom_cb, 1)
         self.create_subscription(Float64, 'odom', self.odom_cb, 1)
+        self.create_subscription(Range, 'camera', self.cam_cb, 1)
 
         self.pubs_cmdvel = self.create_publisher(Twist, 'cmd_vel', 1)
 
@@ -54,6 +55,8 @@ class FindPoles(Node):
         self.r1 = 0.0 #blue
         self.r2 = 0.0 #green
         self.r3 = 0.0 #yellow
+
+        self.complete = False
         
         self.zone = [".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", "."]
     
@@ -171,10 +174,16 @@ class FindPoles(Node):
         b = (-2 * y1) + (2 * y2)
         c = ((self.r1 * self.r1) - (self.r2 * self.r2) - (x1 * x1) + (x2 * x2) - (y1 * y1) + (y2 * y2))
         d = (-2 * x2) + (2 * x3)
-        e = (-2 * y2) + (2 * x3)
+        e = (-2 * y2) + (2 * y3)
         f = ((self.r2 * self.r2) - (self.r3 * self.r3) - (x2 * x2) + (x3 * x3) - (y2 * y2) + (y3 * y3))
         self.x = (((c*e) - (f*b)) / ((e*a) - (b*d)))
         self.y = (((c*d) - (a*f)) / ((b*d) - (a*e)))
+
+    def printer(self):
+        self.get_logger().info("X:")
+        self.get_logger().info(str(self.x))
+        self.get_logger().info("Y:")
+        self.get_logger().info(str(self.y))
 
     def actualProcess(self):
         front = self.f*39.37
@@ -230,7 +239,7 @@ class FindPoles(Node):
         if(abs(distance % 10) < .27 and self.done == False): 
             self.cmd.linear.x = 0.0
             self.cmd.angular.z = v_rot
-            self.get_logger().info(str(self.deg))
+            #self.get_logger().info(str(self.deg))
             if((self.deg > abs(self.direct-420) and self.deg < abs(self.direct-451))):
                 self.rot = False
                 self.get_logger().info("Reset Rot false")
@@ -246,6 +255,8 @@ class FindPoles(Node):
                 self.cmd.linear.x = self.speed
                 self.cmd.angular.z = 0.0
                 self.switcher += 1
+                self.cameraCalc()
+                self.printer()
                 #cameraCalc(self):
             #spins slower when close to desired direction
             elif(self.direct == 0 and self.rot == False):
@@ -283,6 +294,14 @@ class FindPoles(Node):
         self.yaw = msg.data
         self.deg = self.yaw * (180/pi)
         #self.get_logger().info(str(self.yaw))
+    def cam_cb(self, msg):
+        #self.get_logger().info("blue, green, yellow")
+        self.r1 = msg.range
+        self.r2 = msg.min_range
+        self.r3 = msg.max_range
+        #self.get_logger().info(str(self.r1))
+        #self.get_logger().info(str(self.r2))
+        #self.get_logger().info(str(self.r3))
     def frontds_cb(self, msg):
         self.f = msg.range
     def rightds_cb(self, msg):
@@ -294,7 +313,8 @@ class FindPoles(Node):
     def rightps_cb(self, msg):
         self.rps = msg.data
         #self.get_logger().info("New Loop---------")
-        self.actualProcess()
+        if(self.complete == False):
+            self.actualProcess()
 
 def main(args=None):
     rclpy.init(args=args)

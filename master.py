@@ -1,3 +1,4 @@
+#Trevor Fournier U51099396
 import rclpy
 import time
 import math
@@ -13,25 +14,23 @@ from geometry_msgs.msg import PoseWithCovariance
 class FindPoles(Node):
     def __init__(self):
         super().__init__('findpoles_cmdvel')
-        #leave a like and subscribe
+        #leave a like and subscribe!!! Subscribes to publishers in the slave.
         self.subs_front_ds = self.create_subscription(Range, 'front_DS', self.frontds_cb, 1)
         self.subs_right_ds = self.create_subscription(Range, 'right_DS', self.rightds_cb, 1)
         self.subs_left_ds = self.create_subscription(Range, 'left_DS', self.leftds_cb, 1)
         self.subs_left_ps = self.create_subscription(Float64, 'left_PS', self.leftps_cb, 1)
         self.subs_right_ps = self.create_subscription(Float64, 'right_PS', self.rightps_cb, 1)
-        #self.create_subscription(Odometry, 'odom', self.odom_cb, 1)
         self.create_subscription(Float64, 'odom', self.odom_cb, 1)
         self.create_subscription(Range, 'camera', self.cam_cb, 1)
 
+        #publishes to the slave
         self.pubs_cmdvel = self.create_publisher(Twist, 'cmd_vel', 1)
 
         #vehicle parameters
-        self.finder = False #hardcode used for hitting the middle squares
-        self.done = False #
+        self.done = False #This works with "rot", I need two booleans in order stop and start rotating.
         self.rot = True #lock for if it should rotate when it hits a distance
         self.speed = 3.0
-        self.curZone = 16
-        #self.nsew = "n" #cardinal direction
+        self.curZone = 16 #we start here
         self.cmd = Twist() #forgot
         self.prev = 180 #previous angle, used to find XY
         self.direct = 180 #current direction aiming
@@ -60,6 +59,7 @@ class FindPoles(Node):
         
         self.zone = [".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".", "."]
     
+    #This returns the zone we are in depending on the X and Y
     def findLoc(self):
         z = 0
         if(self.x > 10):
@@ -102,8 +102,9 @@ class FindPoles(Node):
         if(z != 0):
             self.zone[z - 1] = "X"
         self.curZone = z
-        #self.get_logger().info(str(self.zone[15]))
-    
+
+    #Changes the direction of when robot stops rotating. It is very long but I promise just repetetive.
+    #if facing a close wall it turns left or right. If facing a zone it encountered it decides for itself.
     def changeDir(self):
         left = self.l*39.37
         right = self.r*39.37
@@ -174,9 +175,7 @@ class FindPoles(Node):
             self.rot = True
             self.done = False
 
-        #self.get_logger().info("New Direction:------------------")
-        #self.get_logger().info(str(self.direct))
-        
+    #Keeps track of the X and Y values after the triangulation finds the values.   
     def findXY(self):
         distance = ((self.lps+self.rps)/2) * .80686
         distStep = distance - self.pastD
@@ -202,6 +201,7 @@ class FindPoles(Node):
             self.y = self.y - pyY
         self.pastD = distance        
     
+    #Uses triangulation/trilateration to find the x and y values based on 3 pillars of known coordinates.
     def cameraCalc(self):
         x1 = -20
         y1 = -20
@@ -218,6 +218,7 @@ class FindPoles(Node):
         self.x = (((c*e) - (f*b)) / ((e*a) - (b*d)))
         self.y = (((c*d) - (a*f)) / ((b*d) - (a*e)))
 
+    #Print function that prints the necessary values after each rotation.
     def printer(self):
         self.get_logger().info("X:")
         self.get_logger().info(str(self.x))
@@ -237,74 +238,42 @@ class FindPoles(Node):
         if count == 16:
             self.complete = True
 
+    #Where the magic happens. Lots of IF statements working together to essentially drive 10 inches, then spin to find location.
+    #It's difficult to do without while loops, cannot use those without getting readings from the slave file.
     def actualProcess(self):
         front = self.f*39.37
         left = self.l*39.37
         right = self.r*39.37
+        #function that decides if spin left or right, keeps robot in middle of squares when the readings begin to sway.
         if((self.switcher % 2) == 0):
-            #self.get_logger().info("Swap")
             v_rot = -.3
             v_rot_slow = -.05
         elif((self.switcher % 2) != 0):
-            #self.get_logger().info("Swap")
             v_rot = .3
             v_rot_slow = .05
         
         distance = (((self.lps+self.rps)/2) * .80686)# - .5
 
-        #if(self.nsew == "w" or self.nsew == "e"):
+        #function that is used for when the robot should stop moving aka 10 inches verticle or horizontal
         if(self.direct == 90 or self.direct == 270):
             stopper = self.x
         else:
             stopper = self.y
+        
         self.findXY()
-
-#        if(self.finder == True):
-#            self.findLoc()
-            #self.get_logger().info("Finder: Zone = ")
-            #self.get_logger().info(str(self.curZone))
-#            self.finder = False
-#            if(self.curZone == 3):
-#                self.direct = 0
-                #self.nsew = "s"
-#                self.done = False
-#            elif(self.curZone == 15):
-#                self.direct = 270
-                #self.nsew = "w"
-#                self.done = False
-#            elif(self.curZone == 14):
-#                self.direct = 180
-                #self.nsew = "n"
-#                self.done = False
-#            elif(self.curZone == 2):
-#                self.direct = 270
-                #self.nsew = "w"
-#                self.done = False
-
-
-
-        #self.get_logger().info(str(self.x))
-        #self.get_logger().info(str(self.y))
-        #self.get_logger().info(str(self.done))
-        #self.get_logger().info(str(self.switcher))
-        #self.get_logger().info(str(self.tmpDist))
         self.cmd.linear.x = self.speed
         self.cmd.angular.z = 0.0
-        #if(abs((stopper % 10) - 5) < .27 and self.done == False): 
         if(abs(distance % 10) < .27 and self.done == False): 
             self.cmd.linear.x = 0.0
             self.cmd.angular.z = v_rot
-            #self.get_logger().info(str(self.deg))
+            #resets boolean about when to rotate
             if((self.deg < abs(self.direct-5) and self.deg > abs(self.direct-14))):
                 self.rot = False
-                #self.get_logger().info("Reset Rot false")
             #resets boolean about when to rotate
             elif(self.deg > abs(self.direct+5) and self.deg < abs(self.direct+14)):
-                #self.get_logger().info("Reset Rot false")
                 self.rot = False
             #stops spinning after 1 desired rotation
             elif(self.deg > self.direct-.34 and self.deg < self.direct+.34 and self.rot == False):
-                #self.get_logger().info("STOPPP IF")
                 self.done = True
                 self.finder = True
                 self.cmd.linear.x = self.speed
@@ -315,47 +284,33 @@ class FindPoles(Node):
             #spins slower when close to desired direction
             elif(self.direct == 0 and self.rot == False):
                 if(self.deg > 356.5 or self.deg < 3.4):
-                    #self.get_logger().info("Spins slow 0")
                     self.cmd.linear.x = 0.0
                     self.cmd.angular.z = v_rot_slow
             #same as previous
             elif(self.deg > self.direct-1.75 and self.deg < self.direct+1.75 and self.rot == False):
-                #self.get_logger().info("Spins slower")
                 self.cmd.linear.x = 0.0
                 self.cmd.angular.z = v_rot_slow
             #This is to change direction
             if(self.rot == False and self.done == True): #and front < 10
                 self.cmd.linear.x = 0.0
                 self.cmd.angular.z = v_rot
-                #self.rot = True
-                #self.done = False
                 self.changeDir()
-                #self.get_logger().info("Change Direction IF")
         #resets "done" boolean after driving a bit
-        elif((stopper % 10) < .27): #need to change this soon
+        elif((stopper % 10) < .27): #may need to change this
             self.rot = True
             self.done = False
-            #self.get_logger().info("Reset done")
             
-
-        
-        #self.get_logger().info(str(self.cmd.linear.x))
-        #self.get_logger().info(str(self.cmd.angular.z))
         self.prev = self.deg
         self.pubs_cmdvel.publish(self.cmd)
 
+    #all the variables get updated here, from the slave file.
     def odom_cb(self, msg):
         self.yaw = msg.data
         self.deg = self.yaw * (180/pi)
-        #self.get_logger().info(str(self.yaw))
     def cam_cb(self, msg):
-        #self.get_logger().info("blue, green, yellow")
         self.r1 = msg.range
         self.r2 = msg.min_range
         self.r3 = msg.max_range
-        #self.get_logger().info(str(self.r1))
-        #self.get_logger().info(str(self.r2))
-        #self.get_logger().info(str(self.r3))
     def frontds_cb(self, msg):
         self.f = msg.range
     def rightds_cb(self, msg):
@@ -366,9 +321,14 @@ class FindPoles(Node):
         self.lps = msg.data
     def rightps_cb(self, msg):
         self.rps = msg.data
-        #self.get_logger().info("New Loop---------")
+        #this stops the robot at the end
         if(self.complete == False):
             self.actualProcess()
+        else:
+            self.cmd.linear.x = 0.0
+            self.cmd.angular.z = 0.0
+            self.pubs_cmdvel.publish(self.cmd)
+
 
 def main(args=None):
     rclpy.init(args=args)

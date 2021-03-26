@@ -1,3 +1,4 @@
+#Trevor Fournier U51099396
 import time
 import rclpy
 import math
@@ -20,18 +21,22 @@ class ServiceNodeVelocity(WebotsNode):
         self.sensor_timer = self.create_timer(
             0.001 * self.service_node_vel_timestep, self.sensor_callback)
         
+        #right motor enabling
         self.right_motor = self.robot.getDevice('right wheel motor')
         self.right_motor.setPosition(float('inf'))
         self.right_motor.setVelocity(0)
 
+        #left motor enabling
         self.left_motor = self.robot.getDevice('left wheel motor')
         self.left_motor.setPosition(float('inf'))
         self.left_motor.setVelocity(0)
 
+        #camera enable
         self.cam = self.robot.getDevice('camera1')
         self.cam.enable(self.timestep)
         self.cam_pub = self.create_publisher(Range, 'camera', 1)
 
+        #wheel sensor enables
         self.right_pos_sensor = self.robot.getDevice('right wheel sensor')
         self.left_pos_sensor = self.robot.getDevice('left wheel sensor')
         self.right_pos_sensor.enable(self.service_node_vel_timestep)
@@ -39,6 +44,7 @@ class ServiceNodeVelocity(WebotsNode):
         self.sensor_pub_right_pos = self.create_publisher(Float64, 'right_PS', 1)
         self.sensor_pub_left_pos = self.create_publisher(Float64, 'left_PS', 1)
 
+        #distance sensor enables
         self.front_dist_sensor = self.robot.getDevice('front_ds')
         self.right_dist_sensor = self.robot.getDevice('right_ds')
         self.left_dist_sensor = self.robot.getDevice('left_ds')
@@ -49,31 +55,31 @@ class ServiceNodeVelocity(WebotsNode):
         self.sensor_pub_right_dist = self.create_publisher(Range, 'right_DS', 1)
         self.sensor_pub_left_dist = self.create_publisher(Range, 'left_DS', 1)
 
-        #self.odom_pub = self.create_publisher(Odometry,"odom",1)
+        #odometry enabling
         self.odom_pub = self.create_publisher(Float64, 'odom' ,1)
 
-        self.get_logger().info("Sensor Enabled")
-
+        #finds max speed, creates velocity subscription
         self.motor_max_speed = self.left_motor.getMaxVelocity()
         self.cmd_vel_subscriber = self.create_subscription(
             Twist, 'cmd_vel', self.cmdVel_callback, 1)
-        
-        #self.start_device_manager(DEVICE_CONFIG)#Enabling this ruins my distance sensors
+        #variable setups before use    
         self.x = 0.0
         self.y = 0.0
         self.th = 0.0
         self.vx = 0.0
         self.vy = 0.0
         self.vth = 0.0
+        self.r1 = 0.0
+        self.r2 = 0.0
+        self.r3 = 0.0
+        #odometry and camera have seperate timers to not slow down my robot
         self.time_step = 0.032
         self.odom_timer = self.create_timer(self.time_step, self.odom_callback)
         self.cam_timer = self.create_timer(self.time_step, self.cam_callback)
         self.wheel_gap = 2.28  # in meter
         self.wheel_radius = 0.8  # in meter
-        self.r1 = 0.0
-        self.r2 = 0.0
-        self.r3 = 0.0
     
+    #camera constantly looking and recording the 3 lengths of 3 pillars. Sends them over as Range() when called.
     def cam_callback(self):
         msg_cam = Range()
         self.cam.recognitionEnable(self.timestep)
@@ -84,25 +90,22 @@ class ServiceNodeVelocity(WebotsNode):
                 #green
                 if(recog[0].get_colors()[0] == 0 and recog[0].get_colors()[1] == 1 and recog[0].get_colors()[2] == 0):
                     self.r2 = f + 3.14
-                    #c2 +=1
                 #blue
                 elif(recog[0].get_colors()[0] == 0 and recog[0].get_colors()[1] == 0 and recog[0].get_colors()[2] == 1):
                     self.r1 = f + 3.14
-                    #c1 +=1
                 #yelow
                 elif(recog[0].get_colors()[0] == 1 and recog[0].get_colors()[1] == 1 and recog[0].get_colors()[2] == 0):
                     self.r3 = f + 3.14
-                    #c3 +=1
 
         msg_cam.range = self.r1
         msg_cam.min_range = self.r2
         msg_cam.max_range = self.r3
-        
         self.cam_pub.publish(msg_cam)
     
     def odom_callback(self):
         self.publish_odom()
     
+    #math behind the odometry
     def euler_to_quaternion(self, yaw, pitch, roll):
         qx = math.sin(roll/2) * math.cos(pitch/2) * math.cos(yaw/2) - math.cos(roll/2) * math.sin(pitch/2) * math.sin(yaw/2)
         qy = math.cos(roll/2) * math.sin(pitch/2) * math.cos(yaw/2) + math.sin(roll/2) * math.cos(pitch/2) * math.sin(yaw/2)
@@ -110,6 +113,8 @@ class ServiceNodeVelocity(WebotsNode):
         qw = math.cos(roll/2) * math.cos(pitch/2) * math.cos(yaw/2) + math.sin(roll/2) * math.sin(pitch/2) * math.sin(yaw/2)
         return [qx, qy, qz, qw]
 
+    #This formula i found online in another github, i changed it to where it only publishes 1 value instead of publishing many values under odom.
+    #the value published is the yaw in radians. Robot starts in 180 degrees
     def publish_odom(self):
         time.sleep(0.03)
         dt = self.time_step
@@ -131,6 +136,7 @@ class ServiceNodeVelocity(WebotsNode):
         yaw.data = (atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz)) + pi) #* (180/pi)
         self.odom_pub.publish(yaw)
 
+    #Publishes velocity based on values sent from within master file.
     def cmdVel_callback(self, msg):
         self.vx = msg.linear.x
         self.vth = msg.angular.z
@@ -149,9 +155,7 @@ class ServiceNodeVelocity(WebotsNode):
         self.right_motor.setVelocity(right_speed)
         self.left_motor.setVelocity(left_speed)
 
-        #self.get_logger().info(str(right_speed))
-        #self.get_logger().info(str(right_speed))
-
+    #publishes my position and distance sensors to the master file.
     def sensor_callback(self):
         msg_left_PS = Float64()
         msg_right_PS = Float64()
@@ -177,7 +181,7 @@ class ServiceNodeVelocity(WebotsNode):
         msg_left_DS.range = self.left_dist_sensor.getValue()
         self.sensor_pub_left_dist.publish(msg_left_DS)
 
-
+#do not touch this
 def main(args=None):
     rclpy.init(args=args)
     client_vel = ServiceNodeVelocity(args=args)

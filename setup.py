@@ -1,17 +1,3 @@
-# Copyright 1996-2021 Soft_illusion.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from glob import glob
 from setuptools import setup
 
@@ -22,14 +8,14 @@ data_files.append(('share/ament_index/resource_index/packages', [
     'resource/' + package_name
 ]))
 data_files.append(('share/' + package_name, [     
-    'launch/lab3_task2_launch.py' #lab3_launch.py SOOON
+    'launch/lab3_task2_launch.py' 
 ]))
-data_files.append(('share/' + package_name + '/worlds', [  #lab3_task2.wbt
-    'worlds/lab3_task2.wbt'
+data_files.append(('share/' + package_name + '/worlds', [  #world
+    'worlds/lab3_task2.wbt'#'worlds/WorldMultipleCylinders.wbt'
 ]))
-data_files.append(('share/' + package_name + '/protos', [ #get rid of? 
-    'protos/Robot_sense.proto'
-]))
+#data_files.append(('share/' + package_name + '/protos', [ #get rid of? 
+#    'protos/Robot_sense.proto'
+#]))
 #data_files.append(
 #    ('share/' + package_name + '/protos/icons', glob('protos/icons/*'))) #get rid of?
 #data_files.append(
@@ -48,17 +34,17 @@ setup(
     data_files=data_files,
     install_requires=['setuptools', 'launch'],
     zip_safe=True,
-    keywords=['ROS2', 'Webots', 'Soft_Illusion',  #wtf are these lol
+    keywords=['ROS2', 'Webots', 'Trevor',  #wtf are these lol
               'Tutorials', 'Youtube', 'Simulation'],
-    maintainer='Soft_illusion',
-    maintainer_email='harsh.b.kakashaniya@gmail.com', #nah not mine
-    description='Projects for videos for webots ros2 tutorial series on youtube',
-    license='Apache License, Version 2.0',
+    maintainer='Trevor',
+    maintainer_email='tmfournier@usf.edu', 
+    description='Project based off of SoftIllusion code',
+    license='',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [  #do we keep enable_robot? defo change linefollower
-            'enable_robot = webots_lab3_task2.slave:main',  #webots_lab3_task2.slave:main
-            'pole_looker = webots_lab3_task2.master:main'  #webots_lab3_task2.master:main
+        'console_scripts': [ 
+            'enable_robot = webots_lab3_task2.slave:main',  #publisher file
+            'pole_looker = webots_lab3_task2.master:main'  #subscriber file with logic
         ],
         'launch.frontend.launch_extension': ['launch_ros = launch_ros']
     }

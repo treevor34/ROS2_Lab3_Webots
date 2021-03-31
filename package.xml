@@ -3,10 +3,10 @@
 <package format="3">
   <name>webots_lab3_task2</name>
   <version>1.0.5</version>
-  <description>This package is made to aid youtube Webots_ROS2 tutorial series</description>
-  <maintainer email="harsh.b.kakashaniya@gmail.com">Soft_illusion</maintainer>
-  <license>Apache License 2.0</license>
-  <url type="website">https://www.youtube.com/c/soft-illusion</url>
+  <description>Project 3 task 2 implementation of Trevor Fournier</description>
+  <maintainer email="tmfournier@usf.edu">Trevor</maintainer>
+  <license>none</license>
+  <url type="website"></url>
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>

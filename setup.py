@@ -8,10 +8,12 @@ data_files.append(('share/ament_index/resource_index/packages', [
     'resource/' + package_name
 ]))
 data_files.append(('share/' + package_name, [     
-    'launch/lab3_task2_launch.py' 
+    'launch/lab3_task2_launch.py',
+    'launch/multiple_cyl_launch.py'  
 ]))
 data_files.append(('share/' + package_name + '/worlds', [  #world
-    'worlds/lab3_task2.wbt'#'worlds/WorldMultipleCylinders.wbt'
+    'worlds/lab3_task2.wbt',
+    'worlds/WorldMultipleCylinders.wbt'
 ]))
 #data_files.append(('share/' + package_name + '/protos', [ #get rid of? 
 #    'protos/Robot_sense.proto'

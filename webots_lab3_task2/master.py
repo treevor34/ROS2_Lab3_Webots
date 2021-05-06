@@ -27,14 +27,14 @@ class FindPoles(Node):
         self.pubs_cmdvel = self.create_publisher(Twist, 'cmd_vel', 1)
 
         #vehicle parameters
-        self.done = False #This works with "rot", I need two booleans in order stop and start rotating.
+        self.doneSpin = False #This works with "rot", I need two booleans in order stop and start rotating.
         self.rot = True #lock for if it should rotate when it hits a distance
         self.speed = 3.0
         self.curZone = 16 #we start here
         self.cmd = Twist() #forgot
         self.prev = 180 #previous angle, used to find XY
         self.direct = 180 #current direction aiming
-        self.switcher = 0
+        self.switcher = 1 
         
         self.f = 0.0 #distance sensors
         self.r = 0.0
@@ -244,6 +244,7 @@ class FindPoles(Node):
         front = self.f*39.37
         left = self.l*39.37
         right = self.r*39.37
+        
         #function that decides if spin left or right, keeps robot in middle of squares when the readings begin to sway.
         if((self.switcher % 2) == 0):
             v_rot = -.3
@@ -263,7 +264,7 @@ class FindPoles(Node):
         self.findXY()
         self.cmd.linear.x = self.speed
         self.cmd.angular.z = 0.0
-        if(abs(distance % 10) < .27 and self.done == False): 
+        if(abs(distance % 10) < .27 and self.doneSpin == False): 
             self.cmd.linear.x = 0.0
             self.cmd.angular.z = v_rot
             #resets boolean about when to rotate
@@ -274,7 +275,7 @@ class FindPoles(Node):
                 self.rot = False
             #stops spinning after 1 desired rotation
             elif(self.deg > self.direct-.34 and self.deg < self.direct+.34 and self.rot == False):
-                self.done = True
+                self.doneSpin = True
                 self.finder = True
                 self.cmd.linear.x = self.speed
                 self.cmd.angular.z = 0.0
@@ -291,14 +292,14 @@ class FindPoles(Node):
                 self.cmd.linear.x = 0.0
                 self.cmd.angular.z = v_rot_slow
             #This is to change direction
-            if(self.rot == False and self.done == True): #and front < 10
+            if(self.rot == False and self.doneSpin == True): #and front < 10
                 self.cmd.linear.x = 0.0
                 self.cmd.angular.z = v_rot
                 self.changeDir()
         #resets "done" boolean after driving a bit
         elif((stopper % 10) < .27): #may need to change this
             self.rot = True
-            self.done = False
+            self.doneSpin = False
             
         self.prev = self.deg
         self.pubs_cmdvel.publish(self.cmd)

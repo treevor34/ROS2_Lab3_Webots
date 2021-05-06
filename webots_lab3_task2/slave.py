@@ -87,6 +87,10 @@ class ServiceNodeVelocity(WebotsNode):
         f = self.front_dist_sensor.getValue()*39.37
         if(len(recog) != 0):
             if abs(recog[0].get_position()[0]) < .02:
+                self.get_logger().info("Position [0][1][2]")
+                self.get_logger().info(str(recog[0].get_colors()[0]))
+                self.get_logger().info(str(recog[0].get_colors()[1]))
+                self.get_logger().info(str(recog[0].get_colors()[2]))
                 #green
                 if(recog[0].get_colors()[0] == 0 and recog[0].get_colors()[1] == 1 and recog[0].get_colors()[2] == 0):
                     self.r2 = f + 3.14

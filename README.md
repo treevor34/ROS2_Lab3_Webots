@@ -58,3 +58,10 @@ The way Ros2 works is there should be 2 or more files used for having your robot
 If creating a new project, then I would recommend keeping the same structure of “def main(args=None):” found at the bottom of my two files because those are crucial to running the file and need not be changed unless changing the names. If looking at my master.py file I have a line that I changed to “fp = FindPoles()”. I changed the FindPoles() to match the name of the class in the same file. 
 The contents of the communication or the publishing file is as follows. It gets the sensor devices and enables them. It then creates publishers for those sensors and publishes the values to the other file. The logic file creates subscriptions and gets data from the publishers via a callback. All of these values are being transmitted as a message which has different types. There is an exception to the way publishers and subscribers are set up. In the logic file instead of subscribing, we create a velocity publisher to publish the speeds we want to the communicator file. The communicator file subscribes and makes the changes by calling “motor.setVelocity(speed)”. This is the basics to the controller files.
 For the launch, setup, and package files I largely just used the examples as templates for those. Inserting my world and controller files into the locations where the examples had their files at.
+
+
+
+For Task2 watch my video to reach my stopping point. Task 2 is to get ORB_SLAM2 to start working with ROS2 and Webots. The github I use is 
+https://github.com/alsora/ros2-ORB_SLAM2
+My video
+https://youtu.be/eL1CGIzoOSY
